@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herramienta de Mapeo Upnify</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            margin-top: 30px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            /* Asegurar diseño vertical */
+            align-items: center;
+            /* Centrar horizontalmente los elementos */
+            gap: 20px;
+            /* Espaciado entre elementos */
+        }
+
+        .map-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            height: 432px;
+            /* Reducir la altura al 40% menos del tamaño actual (720px * 0.6 = 432px) */
+            margin: 0 auto;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            /* Asegurar que el canvas ocupe todo el contenedor */
+            display: block;
+        }
+
+        .map-wrapper img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .panel {
+            border: 1px solid #ddd;
+            padding: 15px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            /* Usar todo el ancho disponible */
+            max-width: 800px;
+            /* Limitar el ancho máximo */
+            text-align: center;
+            /* Centrar contenido dentro de la card */
+            margin: 0;
+            /* Eliminar márgenes adicionales */
+        }
+
+
+        @media (max-width: 1400px) {
+            .panel {
+                width: 80%;
+                margin-left: 10px;
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            width: 300px;
+            text-align: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .config-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+
+        .tool-options label {
+            margin-right: 15px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        input[type="file"],
+        input[type="number"] {
+            padding: 5px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        input[type="file"]:hover,
+        input[type="number"]:hover {
+            border-color: #007bff;
+        }
+
+        h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        select:hover {
+            border-color: #007bff;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="generado.html"
+        style="position: fixed; top: 10px; right: 10px; background: #007bff; color: white; padding: 10px 15px; border-radius: 5px; text-decoration: none; font-size: 14px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+        Ver ejemplo de uso
+    </a>
+    <div class="config-section">
+        <select id="mapType">
+            <option value="fachada">Fachada Principal</option>
+            <option value="nivel">Nivel</option>
+        </select>
+
+        <div class="tool-options">
+            <label><input type="radio" name="tool" value="rectangulo" checked> Rectángulo</label>
+            <label><input type="radio" name="tool" value="poligono"> Polígono</label>
+        </div>
+
+        <div>
+            <input type="file" id="imageInput" accept="image/*">
+            <input type="file" id="codeListInput" accept=".csv,.txt" style="margin-left:10px;">
+        </div>
+
+        <div style="margin-top:10px;">
+            <label>Ancho (px): <input type="number" id="pixelWidth"></label>
+            <label>Alto (px): <input type="number" id="pixelHeight"></label>
+            <button onclick="applyPixelDimensions()">Aplicar</button>
+        </div>
+
+        <!-- Botones de deshacer y rehacer -->
+        <div style="margin-top:10px;">
+            <button onclick="undo()">Deshacer</button>
+            <button onclick="redo()">Rehacer</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div>
+            <div class="map-wrapper" id="imageContainer">
+                <canvas id="mapCanvas"></canvas>
+            </div>
+            <button onclick="finalizeMapping()" style="margin-top:10px;">Generar HTML</button>
+        </div>
+
+        <div class="panel">
+            <h3>HTML Generado</h3>
+            <button onclick="copyHTML()">Copiar JSON</button>
+            <button onclick="downloadJSON()">Descargar JSON</button> <!-- Nuevo botón -->
+            <pre id="htmlOutput"><!-- Pegar aquí el código generado --></pre>
+        </div>
+    </div>
+
+    <div id="codeModal" class="modal">
+        <h3>Asignar Código</h3>
+        <select id="codeDropdown">
+            <option value="101">Código 101</option>
+            <option value="102">Código 102</option>
+            <option value="103">Código 103</option>
+            <!-- Agrega más códigos según sea necesario -->
+        </select>
+        <button onclick="saveCoordinates()">Guardar</button>
+        <button onclick="cancelCapture()">Cancelar</button>
+    </div>
+
+    <script>
+        // Variables para dibujo
+        let isDrawing = false;
+        let startX, startY;
+        let currentShape = [];
+        let polygons = [];
+        let selectedCode = '';
+        let currentTool = 'rectangulo'; // Herramienta predeterminada
+        let canvas = document.getElementById('mapCanvas'); // Referencia al canvas
+        let ctx = canvas.getContext('2d'); // Contexto del canvas
+        let currentImage = null; // Imagen cargada
+        let scale = 1; // Escala lógica para ajustar la imagen al canvas
+
+        // Pilas para deshacer y rehacer
+        let actions = []; // Pila de acciones realizadas
+        let redoStack = []; // Pila de acciones para rehacer
+
+        // Detectar herramienta seleccionada
+        document.querySelectorAll('input[name="tool"]').forEach(tool => {
+            tool.addEventListener('change', function () {
+                currentTool = this.value;
+            });
+        });
+
+        // Cargar imagen en el canvas con ajuste automático
+        document.getElementById('imageInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const img = new Image();
+                    img.onload = function () {
+                        currentImage = img;
+
+                        // Calcular la escala lógica para ajustar la imagen al canvas
+                        const maxWidth = canvas.parentElement.clientWidth; // Ancho máximo del contenedor
+                        const maxHeight = canvas.parentElement.clientHeight; // Alto máximo del contenedor
+                        scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+
+                        // Ajustar el tamaño del canvas al contenedor
+                        canvas.width = maxWidth;
+                        canvas.height = maxHeight;
+
+                        // Dibujar la imagen escalada
+                        redrawCanvas();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Aplicar dimensiones personalizadas al canvas
+        function applyPixelDimensions() {
+            const width = parseInt(document.getElementById('pixelWidth').value, 10);
+            const height = parseInt(document.getElementById('pixelHeight').value, 10);
+
+            if (width > 0 && height > 0) {
+                canvas.width = width;
+                canvas.height = height;
+
+                // Redibujar la imagen si está cargada
+                if (currentImage) {
+                    ctx.drawImage(currentImage, 0, 0, width, height);
+                }
+            } else {
+                alert('Por favor, ingrese dimensiones válidas.');
+            }
+        }
+
+        // Evitar zoom accidental al hacer doble clic
+        canvas.addEventListener('dblclick', function (e) {
+            e.preventDefault(); // Evitar comportamiento predeterminado
+        });
+
+        // Evitar zoom con la rueda del mouse
+        canvas.addEventListener('wheel', function (e) {
+            e.preventDefault(); // Evitar zoom con la rueda del mouse
+        }, { passive: false });
+
+        // Prevenir gestos táctiles (en dispositivos móviles)
+        canvas.addEventListener('touchstart', function (e) {
+            e.preventDefault(); // Evitar zoom táctil
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', function (e) {
+            e.preventDefault(); // Evitar desplazamiento táctil
+        }, { passive: false });
+
+        // Ajustar las coordenadas del mouse según la escala lógica
+        function getScaledCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / scale;
+            const y = (e.clientY - rect.top) / scale;
+            return { x, y };
+        }
+
+        // Detectar clic para comenzar a dibujar
+        canvas.addEventListener('mousedown', function (e) {
+            const { x, y } = getScaledCoordinates(e);
+            if (currentTool === 'rectangulo') {
+                startDrawingRectangle(x, y);
+            } else if (currentTool === 'poligono') {
+                startDrawingPolygon(x, y);
+            }
+        });
+
+        // Dibujo de rectángulos
+        function startDrawingRectangle(x, y) {
+            isDrawing = true;
+            startX = x;
+            startY = y;
+        }
+
+        canvas.addEventListener('mousemove', function (e) {
+            if (!isDrawing || currentTool !== 'rectangulo') return;
+            const { x, y } = getScaledCoordinates(e);
+            drawTemporaryRectangle(x, y);
+        });
+
+        canvas.addEventListener('mouseup', function (e) {
+            if (isDrawing && currentTool === 'rectangulo') {
+                const { x, y } = getScaledCoordinates(e);
+                finalizeRectangle(x, y);
+            }
+        });
+
+        // Dibujar rectángulo temporal mientras arrastras
+        function drawTemporaryRectangle(x, y) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            redrawCanvas();
+            const width = x - startX;
+            const height = y - startY;
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(startX * scale, startY * scale, width * scale, height * scale);
+        }
+
+        // Finalizar rectángulo y guardar acción
+        function finalizeRectangle(x, y) {
+            isDrawing = false;
+            const width = x - startX;
+            const height = y - startY;
+
+            if (width > 0 && height > 0) {
+                const rectangleAction = {
+                    type: 'rectangulo',
+                    coordinates: { x: startX, y: startY, width, height },
+                    code: null
+                };
+                actions.push(rectangleAction);
+                redoStack = [];
+                openCodeModal(rectangleAction.coordinates);
+            }
+
+            redrawCanvas();
+        }
+
+        // Dibujo de polígonos
+        function startDrawingPolygon(x, y) {
+            const point = { x, y };
+            currentShape.push(point);
+            drawPolygon();
+
+            // Finalizar polígono al hacer doble clic
+            if (currentShape.length > 2) {
+                canvas.addEventListener('dblclick', finalizePolygon);
+            }
+        }
+
+        // Dibujar polígono en tiempo real
+        function drawPolygon() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(); // Redibujar la imagen y las acciones finalizadas
+
+    if (currentShape.length > 0) {
+        ctx.beginPath();
+        ctx.moveTo(currentShape[0].x * scale, currentShape[0].y * scale);
+        for (let i = 1; i < currentShape.length; i++) {
+            ctx.lineTo(currentShape[i].x * scale, currentShape[i].y * scale);
+        }
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+}
+
+        function finalizePolygon() {
+            canvas.removeEventListener('dblclick', finalizePolygon);
+
+            if (currentShape.length > 2) {
+                // Guardar acción en la pila
+                const polygonAction = {
+                    type: 'poligono',
+                    coordinates: [...currentShape], // Guardar una copia de las coordenadas
+                    code: null // Código asignado más tarde
+                };
+                actions.push(polygonAction);
+                console.log('Polígono guardado:', polygonAction); // Verificar coordenadas
+                redoStack = []; // Limpiar pila de rehacer
+
+                // Abrir el modal para asignar un código
+                openCodeModal(polygonAction.coordinates);
+            }
+
+            currentShape = []; // Reset para nuevo polígono
+            redrawCanvas();
+        }
+
+        // Redibujar el canvas con la imagen escalada y las acciones
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (currentImage) {
+                // Dibujar la imagen escalada
+                const scaledWidth = currentImage.width * scale;
+                const scaledHeight = currentImage.height * scale;
+                ctx.drawImage(currentImage, 0, 0, scaledWidth, scaledHeight);
+            }
+
+            // Dibujar las acciones escaladas
+            actions.forEach(action => {
+                if (action.type === 'rectangulo') {
+                    const { x, y, width, height } = action.coordinates;
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x * scale, y * scale, width * scale, height * scale);
+                } else if (action.type === 'poligono') {
+                    ctx.beginPath();
+                    ctx.moveTo(action.coordinates[0].x * scale, action.coordinates[0].y * scale);
+                    for (let i = 1; i < action.coordinates.length; i++) {
+                        ctx.lineTo(action.coordinates[i].x * scale, action.coordinates[i].y * scale);
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = 'blue';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            });
+        }
+
+        // Deshacer la última acción
+        function undo() {
+    if (currentShape.length > 0) {
+        // Si hay un polígono en progreso, eliminar el último punto
+        currentShape.pop();
+        drawPolygon(); // Redibujar el polígono en progreso
+    } else if (actions.length > 0) {
+        // Si no hay un polígono en progreso, deshacer la última acción finalizada
+        const lastAction = actions.pop();
+        redoStack.push(lastAction);
+        redrawCanvas();
+    }
+}
+
+        // Rehacer la última acción deshecha
+        function redo() {
+            if (redoStack.length > 0) {
+                const lastRedo = redoStack.pop();
+                actions.push(lastRedo);
+                redrawCanvas();
+            }
+        }
+
+        // Escalar coordenadas según el tamaño actual de la imagen
+        function scaleCoordinates(coordString, originalWidth, originalHeight, currentWidth, currentHeight) {
+            let coords = coordString.split(',').map(num => parseFloat(num.trim()));
+
+            let scaleX = currentWidth / originalWidth;
+            let scaleY = currentHeight / originalHeight;
+
+            let scaledCoords = coords.map((value, index) =>
+                index % 2 === 0 ? value * scaleX : value * scaleY
+            );
+
+            return scaledCoords.map(coord => Math.round(coord)).join(', ');
+        }
+
+        // Función para generar el JSON basado en las áreas dibujadas
+        function finalizeMapping() {
+            let jsonOutput = [];
+            const originalWidth = currentImage ? currentImage.width : canvas.width;
+            const originalHeight = currentImage ? currentImage.height : canvas.height;
+
+            actions.forEach(action => {
+                if (!action.code) {
+                    console.warn('Acción sin código, ignorada:', action);
+                    return;
+                }
+
+                let coordString = '';
+                let normalizedCoords = [];
+
+                if (action.type === 'rectangulo') {
+                    const { x, y, width, height } = action.coordinates;
+
+                    // Coordenadas absolutas
+                    coordString = `${x}, ${y}, ${x + width}, ${y}, ${x + width}, ${y + height}, ${x}, ${y + height}`;
+
+                    // Coordenadas normalizadas
+                    normalizedCoords = [
+                        { x: x / originalWidth, y: y / originalHeight },
+                        { x: (x + width) / originalWidth, y: y / originalHeight },
+                        { x: (x + width) / originalWidth, y: (y + height) / originalHeight },
+                        { x: x / originalWidth, y: (y + height) / originalHeight }
+                    ];
+                } else if (action.type === 'poligono') {
+                    // Coordenadas absolutas
+                    coordString = action.coordinates.map(point => `${point.x},${point.y}`).join(', ');
+
+                    // Coordenadas normalizadas
+                    normalizedCoords = action.coordinates.map(point => ({
+                        x: point.x / originalWidth,
+                        y: point.y / originalHeight
+                    }));
+                }
+
+                // Crear estructura JSON para la coordenada
+                jsonOutput.push({
+                    code: action.code,
+                    coord: coordString, // Coordenadas absolutas
+                    normalizedCoord: normalizedCoords // Coordenadas normalizadas
+                });
+            });
+
+            console.log('JSON Generado:', JSON.stringify(jsonOutput, null, 2));
+            document.getElementById('htmlOutput').textContent = JSON.stringify(jsonOutput, null, 2);
+        }
+
+        // Modal para asignar código después de dibujar
+        function openCodeModal(coordinates) {
+            console.log('Abriendo modal para coordenadas:', coordinates); // Depuración
+            document.getElementById('codeModal').style.display = 'block';
+            selectedCoordinates = coordinates; // Guardar las coordenadas seleccionadas
+        }
+
+        // Guardar código y coordenadas asignadas
+        function saveCoordinates() {
+            const selectedCode = document.getElementById('codeDropdown').value;
+
+            if (selectedCode && selectedCoordinates) {
+                // Buscar la acción correspondiente y asignar el código
+                const actionIndex = actions.findIndex(action =>
+                    JSON.stringify(action.coordinates) === JSON.stringify(selectedCoordinates)
+                );
+                if (actionIndex !== -1) {
+                    actions[actionIndex].code = selectedCode;
+                    console.log('Código asignado al polígono:', actions[actionIndex]);
+                } else {
+                    console.error('No se encontró la acción para asignar el código.');
+                }
+            }
+
+            document.getElementById('codeModal').style.display = 'none';
+            selectedCoordinates = null; // Limpiar las coordenadas seleccionadas
+            redrawCanvas();
+        }
+
+        // Cancelar asignación de código
+        function cancelCapture() {
+            document.getElementById('codeModal').style.display = 'none';
+            selectedCoordinates = null; // Limpiar las coordenadas seleccionadas
+        }
+
+        // Función para copiar el JSON generado al portapapeles
+        function copyHTML() {
+            const jsonOutput = document.getElementById('htmlOutput').textContent;
+            navigator.clipboard.writeText(jsonOutput).then(() => {
+                alert('JSON copiado al portapapeles.');
+            }).catch(err => {
+                console.error('Error al copiar el JSON:', err);
+            });
+        }
+
+        // Función para descargar el JSON generado
+        function downloadJSON() {
+            const jsonOutput = document.getElementById('htmlOutput').textContent;
+
+            if (!jsonOutput) {
+                alert('No hay JSON generado para descargar.');
+                return;
+            }
+
+            const blob = new Blob([jsonOutput], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'mapa.json'; // Nombre del archivo descargado
+            a.click();
+
+            URL.revokeObjectURL(url); // Liberar memoria
+        }
+
+        document.getElementById('codeListInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const lines = event.target.result.split('\n');
+                    const dropdown = document.getElementById('codeDropdown');
+                    dropdown.innerHTML = ''; // Limpiar opciones existentes
+
+                    lines.forEach(line => {
+                        const [code, description] = line.split(',').map(item => item.trim());
+                        if (code && description) {
+                            const option = document.createElement('option');
+                            option.value = code;
+                            option.textContent = `${code} - ${description}`;
+                            dropdown.appendChild(option);
+                        }
+                    });
+                };
+                reader.readAsText(file);
+            }
+        });
+    </script>
+
+
+</body>
+
+</html>

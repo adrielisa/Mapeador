@@ -1,0 +1,23 @@
+101,Entrada Principal
+102,Recepción
+103,Estacionamiento
+104,Gimnasio
+105,Sala de Juntas
+106,Zona de Jardines
+107,Piscina
+108,Oficina Administrativa
+109,Salidas de Emergencia
+110,Nivel 1
+111,Nivel 2
+112,Nivel 3
+113,Nivel 4
+114,Nivel 5
+115,Nivel 6
+116,Nivel 7
+117,Nivel 8
+118,Nivel 9
+119,Nivel 10
+120,Nivel 11
+121,Nivel 12
+122,Nivel 13
+123,Penthouse
