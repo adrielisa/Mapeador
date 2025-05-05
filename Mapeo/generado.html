@@ -15,7 +15,7 @@
         }
 
         .header {
-            background-color: #007bff;
+            background-color: #ff4d67;
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -71,15 +71,15 @@
         }
 
         .polygon-area {
-            fill: rgba(0, 123, 255, 0.3);
-            stroke: rgba(0, 123, 255, 0.7);
+            fill: rgba(255, 0, 187, 0.3);
+            stroke: rgba(255, 0, 187, 0.7);
             stroke-width: 2;
             cursor: pointer;
             pointer-events: all;
         }
 
         .polygon-area:hover {
-            fill: rgba(0, 123, 255, 0.5);
+            fill: rgba(255, 0, 187, 0.5);
         }
 
         .modal {
@@ -144,6 +144,36 @@
             /* Ajustar líneas largas */
             color: #333;
         }
+
+        .github-button {
+            display: inline-flex;
+            align-items: center;
+            background-color: #6c757d;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        .github-button:hover {
+            background-color: #5a6268;
+        }
+
+        .github-button img {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        .footer {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            margin-bottom: 2rem;
+        }
     </style>
 </head>
 
@@ -166,6 +196,14 @@
             <h3>Código del script utilizado:</h3>
             <pre id="exampleCode"></pre>
         </div>
+    </div>
+
+    
+    <div class="footer">
+        <a href="https://github.com/adrielisa/Mapeador.git" target="_blank" class="github-button">
+            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub Logo">
+            Código fuente del ejemplo
+        </a>
     </div>
 
     <script>
