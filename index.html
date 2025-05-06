@@ -598,13 +598,9 @@
 
                     jsonOutput.push({
                         code: action.code,
-                        type: 'circulo',
                         x: Math.round(x),
                         y: Math.round(y),
                         radius: Math.round(radius),
-                        normalizedX: normalizedX,
-                        normalizedY: normalizedY,
-                        normalizedRadius: normalizedRadius
                     });
                 }
 
@@ -618,7 +614,6 @@
                     jsonOutput.push({
                         code: action.code,
                         coord: coordString,
-                        normalizedCoord: normalizedCoords
                     });
                 }
             });
