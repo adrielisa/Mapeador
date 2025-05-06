@@ -17,7 +17,7 @@
         }
 
         header {
-            background: #ff4d67;
+            background: #4B6679;
             color: white;
             padding: 15px 30px;
             display: flex;
@@ -88,7 +88,7 @@
         }
 
         .btn-upnicolor {
-            background: #ff4d67;
+            background: #4B6679;
             color: white;
         }
 
@@ -167,16 +167,13 @@
     <main>
         <aside>
             <div class="box">
-                <label for="mapType">Fachada/Nivel</label>
-                <select id="mapType">
-                    <option value="fachada">Fachada Principal</option>
-                    <option value="nivel">Nivel</option>
-                </select>
 
                 <div style="margin-top:30px;">
                     <label for="pixelWidth">Elija el tipo de selección</label>
                     <label><input type="radio" name="tool" value="rectangulo" checked> Rectángulo</label>
                     <label><input type="radio" name="tool" value="poligono"> Polígono</label>
+                    <label><input type="radio" name="tool" value="circulo"> Círculo (En desarrollo)</label>
+
                 </div>
 
                 <div style="margin-top:30px;">
@@ -251,6 +248,7 @@
         document.querySelectorAll('input[name="tool"]').forEach(tool => {
             tool.addEventListener('change', function () {
                 currentTool = this.value;
+                console.log(`Herramienta seleccionada: ${currentTool}`); // Depuración
             });
         });
 
@@ -347,9 +345,9 @@
         // Ajustar las coordenadas del mouse según la escala lógica
         function getScaledCoordinates(e) {
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / (rect.width / canvas.width);
-            const y = (e.clientY - rect.top) / (rect.height / canvas.height);
-            return { x: x / scale, y: y / scale };
+            const x = (e.clientX - rect.left) * (currentImage.width / rect.width);
+            const y = (e.clientY - rect.top) * (currentImage.height / rect.height);
+            return { x, y };
         }
 
 
@@ -360,6 +358,32 @@
                 startDrawingRectangle(x, y);
             } else if (currentTool === 'poligono') {
                 startDrawingPolygon(x, y);
+            } else if (currentTool === 'circulo') {
+                startDrawingCircle(x, y);
+            }
+        });
+
+        // Detectar movimiento del mouse para dibujar
+        canvas.addEventListener('mousemove', function (e) {
+            if (!isDrawing) return;
+            const { x, y } = getScaledCoordinates(e);
+
+            if (currentTool === 'rectangulo') {
+                drawTemporaryRectangle(x, y);
+            } else if (currentTool === 'circulo') {
+                drawTemporaryCircle(x, y);
+            }
+        });
+
+        // Detectar fin del dibujo
+        canvas.addEventListener('mouseup', function (e) {
+            if (!isDrawing) return;
+            const { x, y } = getScaledCoordinates(e);
+
+            if (currentTool === 'rectangulo') {
+                finalizeRectangle(x, y);
+            } else if (currentTool === 'circulo') {
+                finalizeCircle(x, y);
             }
         });
 
@@ -369,19 +393,6 @@
             startX = x;
             startY = y;
         }
-
-        canvas.addEventListener('mousemove', function (e) {
-            if (!isDrawing || currentTool !== 'rectangulo') return;
-            const { x, y } = getScaledCoordinates(e);
-            drawTemporaryRectangle(x, y);
-        });
-
-        canvas.addEventListener('mouseup', function (e) {
-            if (isDrawing && currentTool === 'rectangulo') {
-                const { x, y } = getScaledCoordinates(e);
-                finalizeRectangle(x, y);
-            }
-        });
 
         // Dibujar rectángulo temporal mientras arrastras
         function drawTemporaryRectangle(x, y) {
@@ -493,6 +504,13 @@
                     ctx.strokeStyle = 'blue';
                     ctx.lineWidth = 2;
                     ctx.stroke();
+                } else if (action.type === 'circulo') {
+                    const { x, y, radius } = action.coordinates;
+                    ctx.beginPath();
+                    ctx.arc(x * scale, y * scale, radius * scale, 0, 2 * Math.PI);
+                    ctx.strokeStyle = 'green';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
                 }
             });
         }
@@ -536,57 +554,78 @@
 
         // Función para generar el JSON basado en las áreas dibujadas
         function finalizeMapping() {
-    let jsonOutput = [];
-    const originalWidth = currentImage ? currentImage.width : canvas.width;
-    const originalHeight = currentImage ? currentImage.height : canvas.height;
+            let jsonOutput = [];
+            const originalWidth = currentImage ? currentImage.width : canvas.width;
+            const originalHeight = currentImage ? currentImage.height : canvas.height;
 
-    const renderedWidth = canvas.width;
-    const renderedHeight = canvas.height;
+            const renderedWidth = canvas.width;
+            const renderedHeight = canvas.height;
 
-    actions.forEach(action => {
-        if (!action.code) {
-            console.warn('Acción sin código, ignorada:', action);
-            return;
+            actions.forEach(action => {
+                if (!action.code) {
+                    console.warn('Acción sin código, ignorada:', action);
+                    return;
+                }
+
+                let coordString = '';
+                let normalizedCoords = [];
+
+                if (action.type === 'rectangulo') {
+                    const { x, y, width, height } = action.coordinates;
+
+                    // Coordenadas normalizadas
+                    normalizedCoords = [
+                        { x: x / originalWidth, y: y / originalHeight },
+                        { x: (x + width) / originalWidth, y: y / originalHeight },
+                        { x: (x + width) / originalWidth, y: (y + height) / originalHeight },
+                        { x: x / originalWidth, y: (y + height) / originalHeight }
+                    ];
+
+                } else if (action.type === 'poligono') {
+                    normalizedCoords = action.coordinates.map(point => ({
+                        x: point.x / originalWidth,
+                        y: point.y / originalHeight
+                    }));
+                } else if (action.type === 'circulo') {
+                    const { x, y, radius } = action.coordinates;
+
+                    // Calcular dimensiones normalizadas
+                    const normalizedX = x / originalWidth;
+                    const normalizedY = y / originalHeight;
+                    // Normalizar el radio respecto a la diagonal de la imagen
+                    const diagonal = Math.sqrt(originalWidth * originalWidth + originalHeight * originalHeight);
+                    const normalizedRadius = radius / diagonal;
+
+                    jsonOutput.push({
+                        code: action.code,
+                        type: 'circulo',
+                        x: Math.round(x),
+                        y: Math.round(y),
+                        radius: Math.round(radius),
+                        normalizedX: normalizedX,
+                        normalizedY: normalizedY,
+                        normalizedRadius: normalizedRadius
+                    });
+                }
+
+                if (action.type !== 'circulo') {
+                    coordString = normalizedCoords.map(p => {
+                        const x = (p.x * renderedWidth).toFixed(2);
+                        const y = (p.y * renderedHeight).toFixed(2);
+                        return `${x}, ${y}`;
+                    }).join(', ');
+
+                    jsonOutput.push({
+                        code: action.code,
+                        coord: coordString,
+                        normalizedCoord: normalizedCoords
+                    });
+                }
+            });
+
+            console.log('JSON Generado:', JSON.stringify(jsonOutput, null, 2));
+            document.getElementById('htmlOutput').textContent = JSON.stringify(jsonOutput, null, 2);
         }
-
-        let coordString = '';
-        let normalizedCoords = [];
-
-        if (action.type === 'rectangulo') {
-            const { x, y, width, height } = action.coordinates;
-
-            // Coordenadas normalizadas
-            normalizedCoords = [
-                { x: x / originalWidth, y: y / originalHeight },
-                { x: (x + width) / originalWidth, y: y / originalHeight },
-                { x: (x + width) / originalWidth, y: (y + height) / originalHeight },
-                { x: x / originalWidth, y: (y + height) / originalHeight }
-            ];
-
-        } else if (action.type === 'poligono') {
-            normalizedCoords = action.coordinates.map(point => ({
-                x: point.x / originalWidth,
-                y: point.y / originalHeight
-            }));
-        }
-
-        // Convertimos normalizedCoord a coord absoluta según canvas.render
-        coordString = normalizedCoords.map(p => {
-            const x = (p.x * renderedWidth).toFixed(2);
-            const y = (p.y * renderedHeight).toFixed(2);
-            return `${x}, ${y}`;
-        }).join(', ');
-
-        jsonOutput.push({
-            code: action.code,
-            coord: coordString,
-            normalizedCoord: normalizedCoords
-        });
-    });
-
-    console.log('JSON Generado:', JSON.stringify(jsonOutput, null, 2));
-    document.getElementById('htmlOutput').textContent = JSON.stringify(jsonOutput, null, 2);
-}
 
         // Modal para asignar código después de dibujar
         function openCodeModal(coordinates) {
@@ -689,7 +728,61 @@
             existing.textContent = message;
         }
 
-        
+        // Dibujo de círculos
+        function startDrawingCircle(x, y) {
+            isDrawing = true;
+            startX = x;
+            startY = y;
+        }
+
+        canvas.addEventListener('mousemove', function (e) {
+            if (!isDrawing || currentTool !== 'circulo') return;
+            const { x, y } = getScaledCoordinates(e);
+            drawTemporaryCircle(x, y);
+        });
+
+        canvas.addEventListener('mouseup', function (e) {
+            if (isDrawing && currentTool === 'circulo') {
+                const { x, y } = getScaledCoordinates(e);
+                finalizeCircle(x, y);
+            }
+        });
+
+        // Dibujar círculo temporal mientras arrastras
+        function drawTemporaryCircle(x, y) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            redrawCanvas();
+            const radius = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
+            ctx.strokeStyle = 'green';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(startX * scale, startY * scale, radius * scale, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+
+        // Finalizar círculo y guardar acción
+        function finalizeCircle(x, y) {
+            isDrawing = false;
+            const radius = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
+
+            if (radius > 0) {
+                const circleAction = {
+                    type: 'circulo',
+                    coordinates: {
+                        x: startX,
+                        y: startY,
+                        radius: radius // Guardar el radio en lugar del diámetro
+                    },
+                    code: null
+                };
+                actions.push(circleAction);
+                redoStack = [];
+                openCodeModal(circleAction.coordinates);
+            }
+
+            redrawCanvas();
+        }
+
     </script>
 
 </body>
