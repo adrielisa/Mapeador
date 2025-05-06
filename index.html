@@ -104,7 +104,7 @@
         .output-section textarea,
         textarea#htmlOutput {
             width: 100%;
-            height: 100px;
+            height: 150px;
             font-family: monospace;
             padding: 10px;
             border: 2px solid #cccccc;
@@ -195,10 +195,12 @@
 
                 <div style="margin-top:30px;">
                     <label>Dimensiones personalizadas (px)</label><br>
-                    <label for="customWidth">Ancho:</label>
-                    <input type="number" id="customWidth" placeholder="Ej. 600">
-                    <label for="customHeight" style="margin-left:10px;">Alto:</label>
-                    <input type="number" id="customHeight" placeholder="Ej. 1300">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <label for="customWidth">Ancho:</label>
+                        <input type="number" id="customWidth" placeholder="Ej. 600">
+                        <label for="customHeight">Alto:</label>
+                        <input type="number" id="customHeight" placeholder="Ej. 1300">
+                    </div>
                 </div>
 
                 <div class="button-group">
